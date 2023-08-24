@@ -71,6 +71,8 @@ common shared
     TypeFamilies
     TypeOperators
     ViewPatterns
+    AllowAmbiguousTypes
+    BlockArguments
 
   build-depends:
     , aeson
@@ -108,4 +110,4 @@ executable book-of-monads
   import:  shared
   main-is: Main.hs
   other-modules:
-    LiftingUnlifting
+    TicTacToe.Final
