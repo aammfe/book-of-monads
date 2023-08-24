@@ -2,9 +2,9 @@ module TicTacToe.Final where
 
 -- when ever I'm making a typeclass dependent on m, I'm making it impure ?
 
-class IsBoard m player board where
-    get_ :: board -> Position -> m (Maybe player)
-    put_ :: board -> player -> Position -> m board 
+class MonadState board m => IsBoard m player board where
+    get_ :: Position -> m (Maybe player)
+    put_ :: player -> Position -> m () 
 
 -- instance type Board = Map Position Player
 
@@ -20,24 +20,24 @@ class Eq player => IsPlayer m player where
 -- data Player = O | X 
 --     deriving stock (Eq, Ord)
 
-data Result player baord = AlreadyTaken { by :: player, board::baord } 
-            | NextTurn { _of :: player, board::baord  } 
-            | GameEnded { winner :: player, board::baord  }
+data Result player baord = AlreadyTaken { by :: player} 
+            | NextTurn { _of :: player } 
+            | GameEnded { winner :: player }
             deriving stock (Eq, Ord)
 
-take_ :: forall m board player .(IsBoard m player board, IsPlayer m player, Monad m) => board -> player -> Position -> m (Result player board)
-take_ board player pos = do
-    i <- get_ board pos
+take_ :: forall m board player .(IsBoard m player board, IsPlayer m player) => player -> Position -> m (Result player board)
+take_ player pos = do
+    i <- get_ pos
     case i of 
-        Just p -> return $ AlreadyTaken p board
+        Just p -> return $ AlreadyTaken p
         Nothing -> do 
-            board' <- put_ board player pos
-            won <- hasWon @m board' player
+            put_ player pos
+            won <- hasWon @m @board player
             if won 
-                then return (GameEnded player board) 
+                then return (GameEnded player) 
                 else do
                  np <- next player
-                 return $ NextTurn np board'
+                 return $ NextTurn np
 
 
 winningLines :: [[Position]]
@@ -57,24 +57,21 @@ winningLines = [ --Horizontal
 
 hasWon :: forall m board player. 
     ( IsBoard m player board
-    , Applicative m
-    , Monad m
     , IsPlayer m player
-    ) => board -> player -> m Bool
-hasWon b player = any id <$> traverse (isOccupiedBy b player) winningLines
+    ) => player -> m Bool
+hasWon player = any id <$> traverse (isOccupiedBy @m @board @player player) winningLines 
 
 
 isOccupiedBy :: forall m board player. 
-                (IsBoard m player board 
-                , Monad m
+                (IsBoard m player board
                 , Eq player
                 ) => 
-                board -> player -> [Position] -> m Bool
-isOccupiedBy b p [x, y, z] = do
+                player -> [Position] -> m Bool
+isOccupiedBy p [x, y, z] = do
     r <- runMaybeT do
-        x' <- MaybeT $ get_ @m @player b x
-        y' <- MaybeT $ get_ @m @player b y
-        z' <- MaybeT $ get_ @m @player b z
+        x' <- MaybeT $ get_ @m @player @board x
+        y' <- MaybeT $ get_ @m @player @board y
+        z' <- MaybeT $ get_ @m @player @board z
         return $ x' == p && x' == y' && z' == y'
     return . isJust $ r
-isOccupiedBy _ _ _ = return False
+isOccupiedBy _ _ = return False
