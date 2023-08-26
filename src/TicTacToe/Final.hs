@@ -2,7 +2,7 @@ module TicTacToe.Final where
 
 -- when ever I'm making a typeclass dependent on m, I'm making it impure ?
 
-class GamePlay m player board where
+class GamePlay m player where
     getCell :: Position -> m (Maybe player)
     putCell :: player -> Position -> m ()
     nextPlayer :: player -> m player
@@ -18,23 +18,23 @@ data Position = Position {col :: Axis, row::Axis}
 -- data Player = O | X 
 --     deriving stock (Eq, Ord)
 
-data Result player baord = AlreadyTaken { by :: player} 
+data Result player = AlreadyTaken { by :: player} 
             | NextTurn { _of :: player } 
             | GameEnded { winner :: player }
             deriving stock (Eq, Ord)
 
-take_ :: forall m board player .(GamePlay m player board, Eq player, Monad m) => player -> Position -> m (Result player board)
+take_ :: forall m player .(GamePlay m player, Eq player, Monad m) => player -> Position -> m (Result player)
 take_ player pos = do
-    i <- getCell @m @player @board pos
+    i <- getCell @m @player pos
     case i of 
         Just p -> return $ AlreadyTaken p
         Nothing -> do 
-            putCell @m @player @board player pos
-            won <- hasWon @m @board player
+            putCell @m @player player pos
+            won <- hasWon @m player
             if won 
                 then return (GameEnded player) 
                 else do
-                 np <- nextPlayer @m @player @board player
+                 np <- nextPlayer @m @player player
                  return $ NextTurn np
 
 
@@ -53,21 +53,21 @@ winningLines = [ --Horizontal
                , [(Position Three One), (Position Two Two), (Position Three One)]
                ]
 
-hasWon :: forall m board player. (GamePlay m player board, Monad m, Eq player) => player -> m Bool
-hasWon player = any id <$> traverse (isOccupiedBy @m @board @player player) winningLines 
+hasWon :: forall m player. (GamePlay m player, Monad m, Eq player) => player -> m Bool
+hasWon player = any id <$> traverse (isOccupiedBy @m @player player) winningLines 
 
 
-isOccupiedBy :: forall m board player. 
-                (GamePlay m player board
+isOccupiedBy :: forall m player. 
+                (GamePlay m player
                 , Eq player
                 , Monad m
                 ) => 
                 player -> [Position] -> m Bool
 isOccupiedBy p [x, y, z] = do
     r <- runMaybeT do
-        x' <- MaybeT $ getCell @m @player @board x
-        y' <- MaybeT $ getCell @m @player @board y
-        z' <- MaybeT $ getCell @m @player @board z
+        x' <- MaybeT $ getCell @m @player x
+        y' <- MaybeT $ getCell @m @player y
+        z' <- MaybeT $ getCell @m @player z
         return $ x' == p && x' == y' && z' == y'
     return . isJust $ r
 isOccupiedBy _ _ = return False
