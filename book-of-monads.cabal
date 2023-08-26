@@ -111,3 +111,4 @@ executable book-of-monads
   main-is: Main.hs
   other-modules:
     TicTacToe.Final
+    TicTacToe.Initial
