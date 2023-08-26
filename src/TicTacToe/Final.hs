@@ -25,16 +25,16 @@ data Result player = AlreadyTaken { by :: player}
 
 take_ :: forall m player .(GamePlay m player, Eq player, Monad m) => player -> Position -> m (Result player)
 take_ player pos = do
-    i <- getCell @m @player pos
+    i <- getCell pos
     case i of 
         Just p -> return $ AlreadyTaken p
         Nothing -> do 
-            putCell @m @player player pos
+            putCell player pos
             won <- hasWon @m player
             if won 
                 then return (GameEnded player) 
                 else do
-                 np <- nextPlayer @m @player player
+                 np <- nextPlayer player
                  return $ NextTurn np
 
 
@@ -54,7 +54,7 @@ winningLines = [ --Horizontal
                ]
 
 hasWon :: forall m player. (GamePlay m player, Monad m, Eq player) => player -> m Bool
-hasWon player = any id <$> traverse (isOccupiedBy @m @player player) winningLines 
+hasWon player = any id <$> traverse (isOccupiedBy player) winningLines 
 
 
 isOccupiedBy :: forall m player. 
@@ -65,9 +65,9 @@ isOccupiedBy :: forall m player.
                 player -> [Position] -> m Bool
 isOccupiedBy p [x, y, z] = do
     r <- runMaybeT do
-        x' <- MaybeT $ getCell @m @player x
-        y' <- MaybeT $ getCell @m @player y
-        z' <- MaybeT $ getCell @m @player z
+        x' <- MaybeT $ getCell x
+        y' <- MaybeT $ getCell y
+        z' <- MaybeT $ getCell z
         return $ x' == p && x' == y' && z' == y'
     return . isJust $ r
 isOccupiedBy _ _ = return False
